@@ -127,17 +127,28 @@ export default function App() {
   // Auto-play slide audio when slide changes and session exists
   useEffect(() => {
     if (!sessionId) return
-    // Try streaming the slide audio via the HTTP streaming endpoint.
-    // This is more reliable than attempting to decode arbitrary MP3 chunks
-    // received over WebSocket.
-    const streamUrl = `${API_BASE}/session/${sessionId}/slides/${slideIndex}/audio`
+    const currentSlide = slides[slideIndex]
+
     const playStream = async () => {
+      // If this slide was generated as an empty background stub, fetch the populated one
+      if (currentSlide && (!currentSlide.script || !currentSlide.point_timings || currentSlide.point_timings.length === 0)) {
+        try {
+          const res = await fetch(`${API_BASE}/session/${sessionId}`)
+          if (res.ok) {
+            const data = await res.json()
+            setSlides(data.slides) // Update UI with populated text/timings
+          }
+        } catch (e) {
+          console.error('Failed to sync background slide', e)
+        }
+      }
+
       try {
         if (!audioRef.current) audioRef.current = new Audio()
         const a = audioRef.current
         a.crossOrigin = 'anonymous'
         a.pause()
-        a.src = streamUrl
+        a.src = `${API_BASE}/session/${sessionId}/slides/${slideIndex}/audio`
         a.currentTime = 0
         await a.play().catch((e) => console.warn('Audio play prevented', e))
       } catch (err) {

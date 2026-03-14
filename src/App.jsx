@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import './App.css'
+import FocusMonitor from './components/FocusMonitor'
 
 const API_BASE = 'http://127.0.0.1:8000/api'
 
@@ -40,6 +41,7 @@ export default function App() {
   const sessionIdRef = useRef(null)
   const pausedAudioTimeRef = useRef(0) // remember where we paused the slide audio
   const qaAudioRef = useRef(null) // separate audio element for Q&A answer TTS
+  const isAlarmingRef = useRef(false)
 
   // Keep refs in sync with state so speech callbacks always have fresh values
   useEffect(() => { teacherStateRef.current = teacherState }, [teacherState])
@@ -66,6 +68,11 @@ export default function App() {
       alert('Please upload your notes first.')
       return
     }
+
+    // Pre-unlock alarm audio on user gesture
+    const unlockAudio = new Audio('/1208.MP3')
+    unlockAudio.volume = 0
+    unlockAudio.play().then(() => unlockAudio.pause()).catch(() => { })
 
     const formData = new FormData()
     formData.append('file', file)
@@ -506,6 +513,24 @@ export default function App() {
     await submitQuestionToBackend(q)
   }
 
+  const handleFocusUpdate = ({ val, status, isAlarming }) => {
+    if (isAlarming && !isAlarmingRef.current) {
+      if (teacherStateRef.current === 'teaching') {
+        audioRef.current?.pause();
+      } else if (teacherStateRef.current === 'answering' || teacherStateRef.current === 'confirming') {
+        qaAudioRef.current?.pause();
+      }
+    } else if (!isAlarming && isAlarmingRef.current) {
+      if (teacherStateRef.current === 'teaching' && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => { });
+      } else if ((teacherStateRef.current === 'answering' || teacherStateRef.current === 'confirming') && qaAudioRef.current) {
+        qaAudioRef.current.play().catch(() => { });
+      }
+    }
+    isAlarmingRef.current = isAlarming;
+  };
+
   return (
     <div className="appRoot">
       <header className="topBar">
@@ -519,6 +544,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      {step === 'session' && <FocusMonitor sessionId={sessionId} onFocusUpdate={handleFocusUpdate} />}
 
       {step === 'upload' ? (
         <main className="uploadPage">

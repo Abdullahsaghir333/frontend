@@ -1,68 +1,145 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Permanent+Marker&display=swap');
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --bg-base: #020617;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
   }
-  a:hover {
-    color: #747bff;
+
+  /* FIX 1: Use min-height instead of height so pages can grow freely */
+  html,
+  body {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
   }
-  button {
-    background-color: #f9f9f9;
+
+  /* FIX 2: #root must fill the full viewport but not clip it */
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-primary);
+    background-color: var(--bg-base);
+    /* FIX 3: Removed background-attachment:fixed — it caused the gradient
+       to bleed into full-bleed auth pages and misalign on scroll */
+    background-image:
+      radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 40%),
+      radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.1), transparent 40%);
+    background-size: cover;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Outfit', system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+
+  /* Premium Glass Cards */
+  .glass-card {
+    @apply bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl;
+  }
+
+  /* Core Buttons */
+  .btn-primary {
+    @apply flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white transition-all duration-300;
+    background: linear-gradient(135deg, #4f46e5, #9333ea);
+    box-shadow: 0 4px 14px 0 rgba(147, 51, 234, 0.39);
+  }
+
+  .btn-primary:hover {
+    @apply transform -translate-y-0.5;
+    box-shadow: 0 6px 20px rgba(147, 51, 234, 0.45);
+    filter: brightness(1.1);
+  }
+
+  .btn-primary:active {
+    @apply transform translate-y-0 relative top-[1px];
+    box-shadow: 0 2px 10px rgba(147, 51, 234, 0.3);
+  }
+
+  .btn-secondary {
+    @apply flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white transition-all duration-300 bg-slate-800/80 border border-slate-700/50 hover:bg-slate-700 hover:border-slate-600;
+  }
+
+  .btn-secondary:hover {
+    @apply transform -translate-y-0.5;
+  }
+
+  /* Form Inputs */
+  .input-field {
+    @apply w-full px-4 py-3 bg-slate-900/50 backdrop-blur-sm border border-slate-700/60 rounded-xl text-white placeholder-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500;
+  }
+
+  /* Status Indicators */
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full inline-block;
+  }
+
+  .status-teaching {
+    @apply bg-indigo-500 shadow-[0_0_10px_rgba(99, 102, 241, 0.8)] animate-pulse;
+  }
+
+  .status-listening {
+    @apply bg-emerald-500 shadow-[0_0_10px_rgba(16, 185, 129, 0.8)] animate-pulse;
+  }
+
+  .status-answering {
+    @apply bg-purple-500 shadow-[0_0_10px_rgba(168, 85, 247, 0.8)] animate-pulse;
+  }
+
+  .status-confirming {
+    @apply bg-amber-500 shadow-[0_0_10px_rgba(245, 158, 11, 0.8)] animate-pulse;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  }
+
+  .text-glow-indigo {
+    text-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+  }
+
+  .font-marker {
+    font-family: 'Permanent Marker', cursive;
+  }
+
+  /* Custom Scrollbar for Webkit */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.4);
   }
 }

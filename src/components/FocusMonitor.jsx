@@ -1,208 +1,233 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Webcam from 'react-webcam';
+import clsx from 'clsx';
+import { Camera, Eye, EyeOff, BellRing, Settings2 } from 'lucide-react';
 
-const FocusMonitor = ({ sessionId, onFocusUpdate }) => {
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const wsRef = useRef(null);
-    const [isCalibrated, setIsCalibrated] = useState(false);
-    const [calibrationProgress, setCalibrationProgress] = useState(0);
-    const [status, setStatus] = useState('INITIALIZING');
-    const [focusVal, setFocusVal] = useState(100);
-    const [blinkTimer, setBlinkTimer] = useState(0);
-    const alarmAudioRef = useRef(null);
-    const [isMuted, setIsMuted] = useState(false);
-    const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+const WS_BASE = 'ws://127.0.0.1:8000/api/focus/ws';
 
-    const handleUnlock = () => {
-        if (alarmAudioRef.current) {
-            alarmAudioRef.current.play()
-                .then(() => {
-                    alarmAudioRef.current.pause();
-                    setIsAudioUnlocked(true);
-                    setStatus(isCalibrated ? "SOUND ENABLED" : "CALIBRATING...");
-                    console.log("Audio unlocked successfully via gesture.");
-                })
-                .catch(e => console.error("Unlock failed:", e));
-        }
+export default function FocusMonitor({ sessionId, onFocusUpdate }) {
+  const webcamRef = useRef(null);
+  const wsRef = useRef(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [monitorStatus, setMonitorStatus] = useState('Off');
+  const [focusState, setFocusState] = useState('focused'); // 'focused', 'distracted', 'alarming'
+  const [debugImage, setDebugImage] = useState(null);
+  const [focusScore, setFocusScore] = useState(100);
+  
+  // Audio state
+  const [audioPlayed, setAudioPlayed] = useState(false);
+  const alarmAudio = useRef(null);
+  
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    alarmAudio.current = new Audio('/1208.mp3');
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, []);
+
+  const connectWS = useCallback(() => {
+    if (!sessionId) return;
+    
+    const ws = new WebSocket(`${WS_BASE}/${sessionId}`);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('Focus WebSocket connected');
+      setMonitorStatus('Connected');
     };
 
-    useEffect(() => {
-        // Initialize Alarm with explicit error handling
-        const audio = new Audio('/1208.MP3');
-        audio.loop = true;
-        audio.preload = 'auto';
-        alarmAudioRef.current = audio;
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      setMonitorStatus(data.status || 'Active');
+      setFocusScore(data.focus_val !== undefined ? Math.round(data.focus_val * 100) : 100);
 
-        // Verify audio file accessibility
-        audio.addEventListener('canplaythrough', () => console.log("Alarm audio loaded and ready."));
-        audio.addEventListener('error', (e) => console.error("Alarm audio load error:", e));
-
-        // Initialize WebSocket
-        const wsUrl = `ws://127.0.0.1:8000/api/focus/ws/${sessionId}`;
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            if (data.is_calibrated) {
-                setIsCalibrated(true);
-                setFocusVal(data.focus_val);
-                setStatus(data.status);
-                setBlinkTimer(data.blink_timer);
-                
-                // Notify parent about focus and alarm state
-                if (onFocusUpdate) {
-                    onFocusUpdate({
-                        val: data.focus_val,
-                        status: data.status,
-                        isAlarming: data.alarm
-                    });
-                }
-
-                if (data.alarm && !isMuted) {
-                    if (alarmAudioRef.current.paused) {
-                        console.log("ALARM TRIGGERED: Status =", data.status);
-                        alarmAudioRef.current.play()
-                            .then(() => {
-                                console.log("Alarm playing.");
-                                setIsAudioUnlocked(true); // Successfully played
-                            })
-                            .catch(e => {
-                                console.error("Alarm play blocked:", e);
-                                setIsAudioUnlocked(false);
-                                setStatus("ALARM BLOCKED - CLICK TO FIX");
-                            });
-                    }
-                } else {
-                    if (!alarmAudioRef.current.paused) {
-                        console.log("Stopping alarm audio.");
-                        alarmAudioRef.current.pause();
-                    }
-                }
-            } else {
-                setIsCalibrated(false);
-                setCalibrationProgress(data.calibration_progress || 0);
-                setStatus(data.status || 'CALIBRATING...');
-            }
-        };
-
-        ws.onclose = () => {
-            console.log("WebSocket closed");
-        };
-
-        // Initialize Camera
-        const startCamera = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (err) {
-                console.error("Error accessing webcam:", err);
-                setStatus("CAMERA ERROR");
-            }
-        };
-
-        startCamera();
-
-        // Frame sending loop
-        const sendFrame = () => {
-            if (ws.readyState === WebSocket.OPEN && videoRef.current && canvasRef.current) {
-                const canvas = canvasRef.current;
-                const context = canvas.getContext('2d');
-                canvas.width = 300; // Reduce size for faster transmission
-                canvas.height = 225;
-                context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-                
-                const frame = canvas.toDataURL('image/jpeg', 0.5);
-                ws.send(JSON.stringify({ type: 'frame', frame }));
-            }
-        };
-
-        const intervalId = setInterval(sendFrame, 200); // 5 FPS
-
-        return () => {
-            clearInterval(intervalId);
-            ws.close();
-            if (videoRef.current?.srcObject) {
-                videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-            }
-            if (alarmAudioRef.current) {
-                alarmAudioRef.current.pause();
-            }
-        };
-    }, [sessionId, isMuted]);
-
-    const recalibrate = () => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'reset' }));
-            setIsCalibrated(false);
-            setCalibrationProgress(0);
+      const isDistracted = data.status === 'No Face' || data.status === 'Looking Away' || data.status === 'Eyes Closed';
+      
+      if (data.alarm) {
+        setFocusState('alarming');
+        if (!audioPlayed) {
+          try {
+            alarmAudio.current.currentTime = 0;
+            alarmAudio.current.play();
+            setAudioPlayed(true);
+          } catch(e) {
+            console.error("Audio playback failed", e);
+          }
         }
+      } else if (isDistracted) {
+        setFocusState('distracted');
+      } else {
+        setFocusState('focused');
+      }
+
+      if (!data.alarm && audioPlayed) {
+        alarmAudio.current.pause();
+        alarmAudio.current.currentTime = 0;
+        setAudioPlayed(false);
+      }
+      
+      if (onFocusUpdate) onFocusUpdate({ 
+        isAlarming: !!data.alarm, 
+        rawStatus: data.status,
+        focusScore: data.focus_val !== undefined ? data.focus_val * 100 : 100
+      });
+      
+      if (data.debug_image) setDebugImage(`data:image/jpeg;base64,${data.debug_image}`);
     };
 
-    return (
-        <div className="focus-monitor-container">
-            <div className={`webcam-pip ${!isAudioUnlocked ? 'audio-blocked' : ''}`} onClick={!isAudioUnlocked ? handleUnlock : undefined}>
-                <video ref={videoRef} autoPlay playsInline muted className="webcam-video" />
-                
-                {!isAudioUnlocked && (
-                    <div className="audio-unlock-overlay fade-in">
-                        <div className="unlock-icon">🚫🔊</div>
-                        <span>Tap to Unlock Sound</span>
-                    </div>
-                )}
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+      setMonitorStatus('Error');
+    };
 
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-                
-                <div className="pip-overlay">
-                    <div className="pip-status">
-                        <div className={`status-dot ${status.includes('FOCUSED') ? 'good' : 'bad'}`} />
-                        <span>{status}</span>
-                    </div>
-                    {isCalibrated && (
-                        <div className="pip-timer">
-                            <span>⏱️ {blinkTimer}s without blink/move</span>
-                        </div>
-                    )}
-                </div>
+    ws.onclose = () => {
+      console.log('WebSocket closed');
+      if (isRunning) {
+        setMonitorStatus('Disconnected (Retrying...)');
+        setTimeout(connectWS, 2000);
+      } else {
+        setMonitorStatus('Off');
+      }
+    };
+  }, [sessionId, isRunning, audioPlayed, onFocusUpdate]);
 
-                <div className="pip-controls">
-                    <button className="pip-btn" onClick={recalibrate} title="Recalibrate">
-                        <span>🔄</span>
-                    </button>
-                    <button className="pip-btn" onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Unmute Alarm" : "Mute Alarm"}>
-                        <span>{isMuted ? '🔇' : '🔊'}</span>
-                    </button>
-                </div>
+  useEffect(() => {
+    if (isRunning) {
+      connectWS();
+    } else {
+      if (wsRef.current) wsRef.current.close();
+      setMonitorStatus('Off');
+    }
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, [isRunning, connectWS]);
+
+  // Capture loop
+  useEffect(() => {
+    let interval;
+    if (isRunning && wsRef.current?.readyState === WebSocket.OPEN) {
+      interval = setInterval(() => {
+        const imageSrc = webcamRef.current?.getScreenshot();
+        if (imageSrc && wsRef.current?.readyState === WebSocket.OPEN) {
+          // Extract base64 part
+          const base64 = imageSrc.split(',')[1];
+          wsRef.current.send(JSON.stringify({ image: base64 }));
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  const statusIcons = {
+    'focused': <Eye size={16} className="text-emerald-400" />,
+    'distracted': <EyeOff size={16} className="text-amber-400" />,
+    'alarming': <BellRing size={16} className="text-red-400 animate-bounce" />,
+    'disabled': <Camera size={16} className="text-slate-400" />
+  };
+
+  const statusColors = {
+    'focused': 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+    'distracted': 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+    'alarming': 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]',
+    'disabled': 'bg-slate-800/50 border-slate-700 text-slate-400'
+  };
+
+  const currentState = !isRunning ? 'disabled' : focusState;
+
+  return (
+    <div className="glass-card overflow-hidden">
+      
+      {/* Minimized Header Bar */}
+      <div 
+        className={clsx(
+          "flex items-center justify-between px-4 py-2.5 cursor-pointer transition-colors hover:bg-slate-800/50",
+          isExpanded ? "border-b border-slate-700/50 bg-slate-800/30" : ""
+        )}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+            <Camera size={16} />
+          </div>
+          <span className="text-sm font-semibold text-white tracking-wide">Focus Monitor</span>
+          <div className={clsx("px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border flex items-center gap-1.5 transition-all duration-300", statusColors[currentState])}>
+            {statusIcons[currentState]}
+            {isRunning ? monitorStatus : 'Disabled'}
+          </div>
+          {isRunning && (
+            <div className="text-[10px] font-bold text-slate-400">
+              Score: {focusScore}%
             </div>
-
-            <div className="focus-meter-card">
-                <div className="meter-label">Focus Score</div>
-                <div className="meter-ring">
-                    <svg viewBox="0 0 36 36" className="circular-chart">
-                        <path className="circle-bg"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path className={`circle ${focusVal > 75 ? 'good' : (focusVal > 40 ? 'warn' : 'bad')}`}
-                            strokeDasharray={`${focusVal}, 100`}
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <text x="18" y="20.35" className="percentage">{Math.round(focusVal)}%</text>
-                    </svg>
-                </div>
-                {!isCalibrated && (
-                   <div className="calibration-box">
-                       <div className="calib-label">Calibrating...</div>
-                       <div className="calib-bar">
-                           <div className="calib-progress" style={{ width: `${calibrationProgress}%` }} />
-                       </div>
-                   </div>
-                )}
-            </div>
+          )}
         </div>
-    );
-};
+        <button className="text-slate-500 hover:text-indigo-400 transition-colors p-1">
+          <Settings2 size={16} />
+        </button>
+      </div>
 
-export default FocusMonitor;
+      {/* Expanded Content Area */}
+      {isExpanded && (
+        <div className="p-4 bg-slate-900/40 relative">
+           
+           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+             
+             {/* Feed container */}
+             <div className="relative w-40 h-[90px] rounded-xl overflow-hidden border border-slate-700 bg-black shrink-0 shadow-inner group">
+               {isRunning ? (
+                 <>
+                   <Webcam
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={{ facingMode: "user" }}
+                      className="w-full h-full object-cover transform -scale-x-100"
+                   />
+                   {/* Scanning overlay effect */}
+                   <div className="absolute inset-0 bg-indigo-500/10 mix-blend-screen pointer-events-none">
+                     <div className="w-full h-1 bg-indigo-400/50 shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-[scan_3s_ease-in-out_infinite]"></div>
+                   </div>
+                 </>
+               ) : (
+                 <div className="flex flex-col items-center justify-center w-full h-full text-slate-600 gap-1 bg-slate-900">
+                    <Camera size={20} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">Camera Off</span>
+                 </div>
+               )}
+               {debugImage && isRunning && (
+                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 flex items-center justify-center">
+                    <img src={debugImage} alt="debug" className="w-full h-full object-contain mix-blend-screen" />
+                 </div>
+               )}
+             </div>
+
+             {/* Controls */}
+             <div className="flex-1 flex flex-col gap-3">
+               <div>
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Attention AI Engine</h4>
+                  <p className="text-[11px] text-slate-500 leading-tight">Actively scans eye movement, blinks, and head orientation to detect distraction and pause lessons.</p>
+               </div>
+               
+               <div className="flex items-center justify-between">
+                 <button 
+                  onClick={() => setIsRunning(!isRunning)}
+                  className={clsx(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all shadow-sm flex items-center gap-2",
+                    isRunning 
+                      ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700" 
+                      : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+                  )}
+                 >
+                   {isRunning ? 'Stop Monitoring' : 'Start Monitoring'}
+                 </button>
+               </div>
+             </div>
+
+           </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -3,7 +3,8 @@ import axios from 'axios';
 
 // Create a configured axios instance for the Node.js backend
 export const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  // Use Vite proxy in dev; same-origin in prod deployments
+  baseURL: '/api',
   withCredentials: true // send cookies
 });
 

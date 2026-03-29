@@ -19,8 +19,9 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 app.use(cookieParser());
+const corsOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite default port
+  origin: corsOrigin,
   credentials: true,
 }));
 app.use(express.json());

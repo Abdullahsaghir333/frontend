@@ -12,6 +12,10 @@ const SessionSchema = new mongoose.Schema({
   topicsCovered: { type: Number, default: 0 },
   materials: [{ type: String }],
   concepts: [{ type: String }],
+  summary: { type: String, default: '' },
+  focusMonitorUsed: { type: Boolean, default: false },
+  focusLogsCount: { type: Number, default: 0 },
+  completedAt: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Session', SessionSchema);

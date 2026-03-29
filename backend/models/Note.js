@@ -5,6 +5,7 @@ const NoteSchema = new mongoose.Schema({
   title: { type: String, default: 'Untitled Notes' },
   summary: { type: String, default: '' },
   keyPoints: [{ type: String }],
+  importantPoints: [{ type: String }], // student-bookmarked important points
   topicNotes: [{
     topic: { type: String },
     content: { type: String },

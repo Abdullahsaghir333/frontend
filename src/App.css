@@ -157,6 +157,8 @@ html, body, #root {
   transition: transform 0.12s ease, border-color 0.12s ease;
 }
 
+
+
 .btnOutline:hover {
   border-color: rgba(129, 140, 248, 0.95);
 }

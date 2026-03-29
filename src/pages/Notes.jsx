@@ -1,5 +1,5 @@
-import { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useContext, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext, api } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import {
@@ -27,19 +27,39 @@ const SectionBlock = ({ icon: Icon, title, children }) => (
 
 export default function Notes() {
   const { user } = useContext(AuthContext);
+  const location = useLocation();
   const [notes, setNotes] = useState([]);
   const [selectedNote, setSelectedNote] = useState(null);
   const [activeTab, setActiveTab] = useState('notes');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const targetSessionId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('sessionId');
+  }, [location.search]);
+
+  const normalizeNote = (note) => {
+    const keyPoints = Array.isArray(note?.keyPoints) ? note.keyPoints : [];
+    const topicNotes = Array.isArray(note?.topicNotes) ? note.topicNotes : [];
+    const cheatsheet = Array.isArray(note?.cheatsheet) ? note.cheatsheet : [];
+    const importantPoints = Array.isArray(note?.importantPoints) ? note.importantPoints : [];
+    const summary = note?.summary || (typeof note?.content === 'string' ? note.content.slice(0, 500) : '');
+    return { ...note, keyPoints, importantPoints, topicNotes, cheatsheet, summary };
+  };
+
   useEffect(() => {
     const fetchNotes = async () => {
       try {
         const res = await api.get('/notes');
-        const data = res.data || [];
+        const data = (res.data || []).map(normalizeNote);
         setNotes(data);
-        if (data.length > 0) setSelectedNote(data[0]);
+        if (data.length > 0) {
+          const matched = targetSessionId
+            ? data.find(n => String(n?.sessionId?._id || n?.sessionId) === String(targetSessionId))
+            : null;
+          setSelectedNote(matched || data[0]);
+        }
       } catch (err) {
         console.error('Failed to fetch notes:', err);
       } finally {
@@ -47,14 +67,39 @@ export default function Notes() {
       }
     };
     fetchNotes();
-  }, []);
+  }, [targetSessionId]);
 
   const handleCopy = () => {
     if (!selectedNote) return;
-    const text = selectedNote.content?.keyPoints?.join('\n') || '';
+    const text = selectedNote.keyPoints?.join('\n') || selectedNote.summary || '';
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!selectedNote) return;
+    const html = `
+      <html>
+        <head><title>${selectedNote.title || 'Notes'}</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.6;">
+          <h1>${selectedNote.title || 'Session Notes'}</h1>
+          <p><strong>Date:</strong> ${new Date(selectedNote.createdAt).toLocaleString()}</p>
+          <h2>Summary</h2>
+          <p>${(selectedNote.summary || '').replace(/\n/g, '<br/>')}</p>
+          <h2>Key Points</h2>
+          <ol>${(selectedNote.keyPoints || []).map(k => `<li>${k}</li>`).join('')}</ol>
+          <h2>Topic Notes</h2>
+          ${(selectedNote.topicNotes || []).map(t => `<h3>${t.topic || ''}</h3><p>${(t.content || '').replace(/\n/g, '<br/>')}</p>`).join('')}
+        </body>
+      </html>
+    `;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
   };
 
   return (
@@ -132,7 +177,7 @@ export default function Notes() {
                     <button onClick={handleCopy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, cursor: 'pointer', background: 'transparent', border: `1px solid ${C.cardBorder}`, color: copied ? C.lime : C.text, fontSize: 13, fontFamily: 'sans-serif' }}>
                       <Copy size={13} />{copied ? 'Copied!' : 'Copy'}
                     </button>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, cursor: 'pointer', background: C.limeDim, border: `1px solid ${C.limeBorder}`, color: C.lime, fontSize: 13, fontFamily: 'sans-serif', fontWeight: 600 }}>
+                    <button onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, cursor: 'pointer', background: C.limeDim, border: `1px solid ${C.limeBorder}`, color: C.lime, fontSize: 13, fontFamily: 'sans-serif', fontWeight: 600 }}>
                       <Download size={13} />Download PDF
                     </button>
                   </div>
@@ -144,11 +189,23 @@ export default function Notes() {
                 {activeTab === 'notes' && (
                   <div style={{ animation: 'fadeUp 0.3s ease both' }}>
                     <SectionBlock icon={BookMarked} title="Summary">
-                      <p style={{ color: C.text, fontSize: 14, fontFamily: 'sans-serif', lineHeight: 1.7, margin: 0 }}>{selectedNote.content?.summary || 'No summary available.'}</p>
+                      <p style={{ color: C.text, fontSize: 14, fontFamily: 'sans-serif', lineHeight: 1.7, margin: 0 }}>{selectedNote.summary || 'No summary available.'}</p>
                     </SectionBlock>
+                    {selectedNote.importantPoints?.length > 0 && (
+                      <SectionBlock icon={CheckCircle2} title="Important Points (Bookmarked)">
+                        <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {selectedNote.importantPoints.map((pt, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                              <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'rgba(168,85,247,0.12)', border: `1px solid rgba(168,85,247,0.25)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#a855f7', fontFamily: 'sans-serif' }}>{i + 1}</div>
+                              <span style={{ color: C.text, fontSize: 14, fontFamily: 'sans-serif', lineHeight: 1.6 }}>{pt}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </SectionBlock>
+                    )}
                     <SectionBlock icon={CheckCircle2} title="Key Points">
                       <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {selectedNote.content?.keyPoints?.map((pt, i) => (
+                        {selectedNote.keyPoints?.map((pt, i) => (
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                             <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: C.limeDim, border: `1px solid ${C.limeBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: C.lime, fontFamily: 'sans-serif' }}>{i + 1}</div>
                             <span style={{ color: C.text, fontSize: 14, fontFamily: 'sans-serif', lineHeight: 1.6 }}>{pt}</span>
@@ -158,7 +215,7 @@ export default function Notes() {
                     </SectionBlock>
                     <div>
                       <div style={{ color: C.white, fontSize: 15, fontWeight: 700, fontFamily: 'Georgia, serif', marginBottom: 14 }}>Topic Notes</div>
-                      {selectedNote.content?.topicNotes?.map((t, i) => (
+                      {selectedNote.topicNotes?.map((t, i) => (
                         <div key={i} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '16px 20px', marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><Tag size={13} color={C.lime} /><span style={{ color: C.lime, fontSize: 13, fontWeight: 600, fontFamily: 'sans-serif' }}>{t.topic}</span></div>
                           <p style={{ color: C.text, fontSize: 13, fontFamily: 'sans-serif', lineHeight: 1.65, margin: 0 }}>{t.content}</p>
@@ -172,8 +229,8 @@ export default function Notes() {
                   <div style={{ animation: 'fadeUp 0.3s ease both' }}>
                     <SectionBlock icon={Lightbulb} title="Quick Reference">
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {selectedNote.content?.cheatsheet?.map((item, i) => (
-                          <div key={i} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: i < selectedNote.content.cheatsheet.length - 1 ? `1px solid ${C.cardBorder}` : 'none' }}>
+                        {selectedNote.cheatsheet?.map((item, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: i < selectedNote.cheatsheet.length - 1 ? `1px solid ${C.cardBorder}` : 'none' }}>
                             <div style={{ width: 180, flexShrink: 0, color: C.lime, fontSize: 13, fontWeight: 600, fontFamily: 'sans-serif' }}>{item.term}</div>
                             <div style={{ color: C.text, fontSize: 13, fontFamily: 'sans-serif', lineHeight: 1.5 }}>{item.def}</div>
                           </div>

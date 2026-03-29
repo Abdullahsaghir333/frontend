@@ -10,5 +10,13 @@ export default defineConfig({
     // Force a specific port
     port: 5173,
     strictPort: false,
+    proxy: {
+      // Node/Mongo backend (cookies work because browser hits same origin `/api`)
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

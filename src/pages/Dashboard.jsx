@@ -61,7 +61,7 @@ const StatCard = ({ icon: Icon, value, label, delta, delay = 0 }) => (
     </Card>
 );
 
-const SessionRow = ({ title, time, score, duration, onClick, delay = 0 }) => (
+const SessionRow = ({ title, time, score, duration, summary, focusMonitorUsed, onClick, delay = 0 }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 10, background: '#0d0d0d', border: `1px solid ${C.cardBorder}`, animation: `fadeUp 0.5s ${delay}s ease both`, cursor: 'pointer', transition: 'border-color 0.2s' }}
         onMouseEnter={e => e.currentTarget.style.borderColor = C.limeBorder}
         onMouseLeave={e => e.currentTarget.style.borderColor = C.cardBorder}
@@ -73,10 +73,18 @@ const SessionRow = ({ title, time, score, duration, onClick, delay = 0 }) => (
         <div style={{ flex: 1 }}>
             <div style={{ color: C.white, fontSize: 14, fontFamily: 'sans-serif', fontWeight: 600 }}>{title}</div>
             <div style={{ color: C.muted, fontSize: 12, fontFamily: 'sans-serif', marginTop: 2 }}>{time}</div>
+            {summary && (
+                <div style={{ color: C.soft, fontSize: 11, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {summary}
+                </div>
+            )}
         </div>
         <div style={{ textAlign: 'right' }}>
             <div style={{ color: C.lime, fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif' }}>{score}%</div>
             <div style={{ color: C.muted, fontSize: 11, fontFamily: 'sans-serif', marginTop: 1 }}>{duration}</div>
+            {focusMonitorUsed && (
+                <div style={{ color: '#a3e635', fontSize: 10, marginTop: 2, fontWeight: 700 }}>Focus ON</div>
+            )}
         </div>
     </div>
 );
@@ -114,7 +122,9 @@ export default function Dashboard() {
                     title: s.title,
                     time: new Date(s.createdAt).toLocaleDateString(),
                     score: s.focusScore || 0,
-                    duration: s.duration ? `${Math.floor(s.duration / 60)}m` : '0m'
+                    duration: s.duration ? `${Math.floor(s.duration / 60)}m` : '0m',
+                    summary: s.summary || '',
+                    focusMonitorUsed: !!s.focusMonitorUsed,
                 })));
 
                 const focusData = focusRes.data || { average: 0, breakdown: { focused: 0, distracted: 0, away: 0 } };
@@ -182,7 +192,9 @@ export default function Dashboard() {
                                     { icon: UploadCloud, title: 'Upload Document', sub: 'Start a new learning session', onClick: () => navigate('/upload') },
                                     { icon: Play, title: 'Continue Learning', sub: 'Resume your last session', onClick: () => {
                                         if (recentSessions.length > 0) {
-                                            navigate(`/session/${recentSessions[0].id}`);
+                                            // `id` here is the Mongo session id in this component.
+                                            // Keep compatibility by routing through /session/:id redirect.
+                                            navigate(`/session/${recentSessions[0].id}/slide/0`);
                                         }
                                     } },
                                 ].map(({ icon: Icon, title, sub, onClick }, i) => (

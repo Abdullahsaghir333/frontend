@@ -66,7 +66,16 @@ router.get('/:id', authMiddleware, async (req, res) => {
 // @access  Private
 router.patch('/:id', authMiddleware, async (req, res) => {
   try {
-    const { status, duration, focusScore, topicsCovered } = req.body;
+    const {
+      status,
+      duration,
+      focusScore,
+      topicsCovered,
+      summary,
+      focusMonitorUsed,
+      focusLogsCount,
+      completedAt,
+    } = req.body;
     
     let session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ message: 'Session not found' });
@@ -81,6 +90,10 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     if (duration !== undefined) session.duration = duration;
     if (focusScore !== undefined) session.focusScore = focusScore;
     if (topicsCovered !== undefined) session.topicsCovered = topicsCovered;
+    if (summary !== undefined) session.summary = summary;
+    if (focusMonitorUsed !== undefined) session.focusMonitorUsed = !!focusMonitorUsed;
+    if (focusLogsCount !== undefined) session.focusLogsCount = Number(focusLogsCount) || 0;
+    if (completedAt !== undefined) session.completedAt = completedAt ? new Date(completedAt) : null;
 
     await session.save();
     res.json(session);

@@ -55,6 +55,11 @@ const SessionCard = ({ session, onDelete, delay = 0 }) => {
                         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontFamily: 'sans-serif' }}><Target size={12} color={C.lime} /><span style={{ color: C.lime, fontWeight: 600 }}>{session.focusScore}% focus</span></span>
                         <span style={{ color: C.muted, fontSize: 12, fontFamily: 'sans-serif' }}>{session.topicsCompleted || 0}/{session.topicsTotal || 0} topics</span>
                     </div>
+                    {session.summary && (
+                        <div style={{ color: C.soft, fontSize: 12, marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {session.summary}
+                        </div>
+                    )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     <Badge status={session.status} />
@@ -70,7 +75,7 @@ const SessionCard = ({ session, onDelete, delay = 0 }) => {
                                 <div style={{ padding: '8px 14px', fontSize: 13, fontFamily: 'sans-serif', color: C.text, cursor: 'pointer' }}
                                     onMouseEnter={e => e.currentTarget.style.background = '#1e1e1e'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    onClick={() => { navigate(`/session/${session.pythonSessionId}`); setMenuOpen(false); }}
+                                    onClick={() => { navigate(`/session/${session.pythonSessionId}/slide/0`); setMenuOpen(false); }}
                                 >View Session</div>
                                 <div style={{ padding: '8px 14px', fontSize: 13, fontFamily: 'sans-serif', color: '#f87171', cursor: 'pointer' }}
                                     onMouseEnter={e => e.currentTarget.style.background = '#1e1e1e'}
@@ -81,7 +86,7 @@ const SessionCard = ({ session, onDelete, delay = 0 }) => {
                         )}
                     </div>
                     <div 
-                        onClick={() => navigate(`/session/${session.pythonSessionId}`)}
+                        onClick={() => navigate(`/session/${session.pythonSessionId}/slide/0`)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: C.white, fontSize: 13, fontFamily: 'sans-serif', fontWeight: 600, padding: '6px 10px', borderRadius: 7, transition: 'color 0.15s' }}
                         onMouseEnter={e => e.currentTarget.style.color = C.lime}
                         onMouseLeave={e => e.currentTarget.style.color = C.white}

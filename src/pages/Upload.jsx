@@ -102,7 +102,7 @@ export default function Upload() {
 
       // ── Step 2: Persist session metadata to MongoDB via Node.js ──
       try {
-        const mongoRes = await api.post('/api/sessions', {
+        const mongoRes = await api.post('/sessions', {
           pythonSessionId,
           title: file.name.replace(/\.[^/.]+$/, ''), // strip extension for title
           fileName: file.name,
@@ -119,7 +119,7 @@ export default function Upload() {
       setStatusText('Generating slides and voice script…');
 
       // ── Step 3: Navigate to SessionRoom ───────────────────
-      navigate(`/session/${pythonSessionId}`, {
+      navigate(`/session/${pythonSessionId}/slide/0`, {
         state: {
           pythonSessionId,          // pyData.id — UUID string from SessionState
           mongoSessionId,           // may be null if Node.js step failed

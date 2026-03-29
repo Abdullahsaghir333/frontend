@@ -19,6 +19,15 @@ router.post('/', authMiddleware, async (req, res) => {
     });
 
     const focusLog = await newFocusLog.save();
+
+    // Keep a lightweight counter on session for dashboard quick reads
+    if (sessionId) {
+      await Session.findByIdAndUpdate(sessionId, {
+        $set: { focusMonitorUsed: true },
+        $inc: { focusLogsCount: 1 },
+      }).catch(() => { });
+    }
+
     res.json(focusLog);
   } catch (err) {
     console.error(err.message);
@@ -59,18 +68,38 @@ router.get('/user-stats', authMiddleware, async (req, res) => {
     const logs = await FocusLog.find({ userId: req.user._id });
 
     if (logs.length === 0) {
-      return res.json({ avgFocus: 0, sessionsCount: 0 });
+      return res.json({
+        average: 0,
+        sessionsCount: 0,
+        breakdown: { focused: 0, distracted: 0, away: 0 },
+      });
     }
 
     const totalScore = logs.reduce((acc, log) => acc + log.focusScore, 0);
-    const avgFocus = Math.round(totalScore / logs.length);
+    const average = Math.round(totalScore / logs.length);
 
     // Get count of unique sessions
     const sessionsCount = new Set(logs.map(log => log.sessionId.toString())).size;
 
+    const counts = logs.reduce((acc, log) => {
+      const s = (log.status || '').toLowerCase();
+      if (s === 'focused') acc.focused += 1;
+      else if (s === 'away') acc.away += 1;
+      else acc.distracted += 1;
+      return acc;
+    }, { focused: 0, distracted: 0, away: 0 });
+
+    const total = logs.length || 1;
+    const breakdown = {
+      focused: (counts.focused / total) * 100,
+      distracted: (counts.distracted / total) * 100,
+      away: (counts.away / total) * 100,
+    };
+
     res.json({
-      avgFocus,
+      average,
       sessionsCount
+      ,breakdown
     });
   } catch (err) {
     console.error(err.message);

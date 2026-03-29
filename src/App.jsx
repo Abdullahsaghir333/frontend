@@ -7,7 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
-import SessionRoom from './pages/SessionRoom'; 
+import SessionRoom from './pages/SessionRoom';
 import Upload from './pages/Upload';
 import Notes from './pages/Notes';
 import RoleReversal from './pages/RoleReversal';
@@ -53,7 +53,8 @@ export default function App() {
           {/* Protected Application Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
-          <Route path="/session/:id" element={<ProtectedRoute><SessionRoom /></ProtectedRoute>} />
+          <Route path="/session/:id" element={<Navigate to="slide/0" replace />} />
+          <Route path="/session/:id/slide/:slideIndex" element={<ProtectedRoute><SessionRoom /></ProtectedRoute>} />
           <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
           <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
           <Route path="/role-reversal" element={<ProtectedRoute><RoleReversal /></ProtectedRoute>} />

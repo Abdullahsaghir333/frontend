@@ -27,16 +27,43 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create notes compiled from bookmarks at the end of a session
 router.post('/compile', authMiddleware, async (req, res) => {
   try {
-    const { sessionId } = req.body;
+    const { sessionId, title, summary, keyPoints, importantPoints, topicNotes, cheatsheet, content } = req.body;
+
+    // Ensure session belongs to current user
+    const session = await Session.findById(sessionId);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    if (session.userId.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ error: 'Not authorized' });
+    }
+
     // Get all bookmarks for session
     const bookmarks = await Bookmark.find({ sessionId }).sort({ timestamp: 1 });
     
     // Compile into content
     let compiledContent = bookmarks.map(b => b.content).join('\n\n');
+    if (!compiledContent && typeof content === 'string' && content.trim()) {
+      compiledContent = content.trim();
+    }
     if (!compiledContent) compiledContent = "No notes generated for this session.";
 
-    const note = new Note({ sessionId, content: compiledContent });
-    await note.save();
+    // Upsert one canonical note per session
+    const payload = {
+      sessionId,
+      title: title || `${session.title || 'Session'} Notes`,
+      summary: summary || '',
+      keyPoints: Array.isArray(keyPoints) ? keyPoints : [],
+      importantPoints: Array.isArray(importantPoints) ? importantPoints : [],
+      topicNotes: Array.isArray(topicNotes) ? topicNotes : [],
+      cheatsheet: Array.isArray(cheatsheet) ? cheatsheet : [],
+      content: compiledContent,
+      generatedAt: new Date(),
+    };
+
+    const note = await Note.findOneAndUpdate(
+      { sessionId },
+      { $set: payload },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.status(201).json({ message: 'Notes compiled successfully', note });
   } catch (error) {

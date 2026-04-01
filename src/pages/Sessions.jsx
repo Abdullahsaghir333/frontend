@@ -1,7 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext, api } from '../context/AuthContext';
-import Sidebar from '../components/Sidebar';
 import {
     Bell, Search, Play, MoreVertical,
     Clock, Target, FileText, Calendar, Plus, Loader2
@@ -62,6 +61,11 @@ const SessionCard = ({ session, onDelete, delay = 0 }) => {
                     )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    {session.difficulty && (
+                        <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, textTransform: 'uppercase', background: 'rgba(255,255,255,0.08)', color: '#aaa', border: `1px solid ${C.cardBorder}` }}>
+                            {session.difficulty}
+                        </span>
+                    )}
                     <Badge status={session.status} />
                     <div style={{ position: 'relative' }}>
                         <div onClick={() => setMenuOpen(!menuOpen)} style={{ width: 28, height: 28, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, transition: 'background 0.15s' }}
@@ -86,7 +90,7 @@ const SessionCard = ({ session, onDelete, delay = 0 }) => {
                         )}
                     </div>
                     <div 
-                        onClick={() => navigate(`/session/${session.pythonSessionId}/slide/0`)}
+                        onClick={() => navigate(`/session/${session.pythonSessionId}/slide/${session.lastSlideIndex || 0}`)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: C.white, fontSize: 13, fontFamily: 'sans-serif', fontWeight: 600, padding: '6px 10px', borderRadius: 7, transition: 'color 0.15s' }}
                         onMouseEnter={e => e.currentTarget.style.color = C.lime}
                         onMouseLeave={e => e.currentTarget.style.color = C.white}
@@ -134,10 +138,8 @@ export default function Sessions() {
     const inProgressCount = sessions.filter(s => s.status !== 'completed').length;
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
-            <Sidebar />
-            <div style={{ marginLeft: 200, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-                <header style={{ position: 'sticky', top: 0, zIndex: 50, height: 60, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', background: C.bg }}>
+            <header style={{ position: 'sticky', top: 56, zIndex: 40, height: 60, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
                     <div>
                         <div style={{ color: C.white, fontWeight: 700, fontSize: 18, fontFamily: 'Georgia, serif' }}>Sessions</div>
                         <div style={{ color: C.muted, fontSize: 12, marginTop: 1, fontFamily: 'sans-serif' }}>View and manage your learning sessions</div>
@@ -157,15 +159,21 @@ export default function Sessions() {
                     </div>
                 </header>
                 <main style={{ flex: 1, overflowY: 'auto', padding: '28px 28px 48px' }}>
+                    {sessions.length >= 5 && (
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px 16px', borderRadius: 8, color: '#f87171', fontSize: 13, fontFamily: 'sans-serif', marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
+                            ⚠️ You have reached the session limit (5/5). Please delete an old session to create a new one.
+                        </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                         <div style={{ display: 'flex', gap: 10 }}>
                             <span style={{ padding: '4px 12px', borderRadius: 6, background: C.limeDim, border: `1px solid ${C.limeBorder}`, color: C.lime, fontSize: 12, fontFamily: 'sans-serif', fontWeight: 600 }}>{sessions.length} sessions</span>
                             <span style={{ padding: '4px 12px', borderRadius: 6, background: '#161616', border: `1px solid ${C.cardBorder}`, color: C.soft, fontSize: 12, fontFamily: 'sans-serif', fontWeight: 600 }}>{completedCount} completed</span>
                             {inProgressCount > 0 && <span style={{ padding: '4px 12px', borderRadius: 6, background: '#161616', border: `1px solid ${C.cardBorder}`, color: C.soft, fontSize: 12, fontFamily: 'sans-serif', fontWeight: 600 }}>{inProgressCount} in progress</span>}
                         </div>
-                        <button onClick={() => navigate('/upload')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, background: C.lime, border: 'none', color: '#0a0a0a', fontSize: 13, fontWeight: 700, fontFamily: 'sans-serif', cursor: 'pointer' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#d4f000'}
-                            onMouseLeave={e => e.currentTarget.style.background = C.lime}
+                        <button onClick={() => navigate('/upload')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, background: C.lime, border: 'none', color: '#0a0a0a', fontSize: 13, fontWeight: 700, fontFamily: 'sans-serif', cursor: sessions.length >= 5 ? 'not-allowed' : 'pointer', opacity: sessions.length >= 5 ? 0.5 : 1 }}
+                            disabled={sessions.length >= 5}
+                            onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.background = '#d4f000')}
+                            onMouseLeave={e => !e.currentTarget.disabled && (e.currentTarget.style.background = C.lime)}
                         ><Plus size={15} /> New Session</button>
                     </div>
 
@@ -186,7 +194,6 @@ export default function Sessions() {
                         </div>
                     )}
                 </main>
-            </div>
             <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
         * { box-sizing: border-box; }

@@ -323,7 +323,11 @@ export default function FocusMonitor({ sessionId, onFocusUpdate, onRunningChange
         {/* Camera / debug feed */}
         <div style={{
           width: 160, height: 120, background: '#000',
-          borderRight: '1px solid #1e293b',
+          border: '4px solid',
+          borderColor: isRunning && isCalibrated ? (focusScore > 75 ? '#4ade80' : focusScore >= 40 ? '#fbbf24' : '#ef4444') : '#1e293b',
+          transition: 'border-color 800ms ease',
+          animation: isRunning && isCalibrated && focusScore < 40 ? 'focusRingPulse 1s infinite' : 'none',
+          boxSizing: 'border-box',
           flexShrink: 0, position: 'relative', overflow: 'hidden',
         }}>
           {isRunning ? (
@@ -520,6 +524,10 @@ export default function FocusMonitor({ sessionId, onFocusUpdate, onRunningChange
         @keyframes focusAlarmPulse {
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.5; }
+        }
+        @keyframes focusRingPulse {
+          0%, 100% { border-color: #ef4444; opacity: 1; }
+          50%      { border-color: #7f1d1d; opacity: 0.8; }
         }
       `}</style>
     </div>

@@ -3,12 +3,37 @@ const router = express.Router();
 const Session = require('../models/Session');
 const authMiddleware = require('../middleware/authMiddleware');
 
+const SESSION_LIMIT = 5;
+
+// @route   GET /api/sessions/check-limit
+// @desc    Pre-flight check: can this user create a new session?
+// @access  Private
+router.get('/check-limit', authMiddleware, async (req, res) => {
+  try {
+    const count = await Session.countDocuments({ userId: req.user._id });
+    res.json({ count, limit: SESSION_LIMIT, canCreate: count < SESSION_LIMIT });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 // @route   POST /api/sessions
 // @desc    Create a new session record (called after Python session creation)
 // @access  Private
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { pythonSessionId, title, fileName, topicsTotal, materials, concepts } = req.body;
+    // ── Enforce 5-session limit ──
+    const count = await Session.countDocuments({ userId: req.user._id });
+    if (count >= SESSION_LIMIT) {
+      return res.status(403).json({
+        message: `Session limit reached (${SESSION_LIMIT}). Please delete an existing session before creating a new one.`,
+        count,
+        limit: SESSION_LIMIT,
+      });
+    }
+
+    const { pythonSessionId, title, fileName, topicsTotal, materials, concepts, difficulty } = req.body;
     
     const newSession = new Session({
       userId: req.user._id,
@@ -17,7 +42,8 @@ router.post('/', authMiddleware, async (req, res) => {
       fileName,
       topicsTotal: topicsTotal || 0,
       materials,
-      concepts
+      concepts,
+      difficulty: difficulty || 'medium',
     });
 
     const session = await newSession.save();
@@ -62,7 +88,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // @route   PATCH /api/sessions/:id
-// @desc    Update a session (status, duration, focusScore, etc.)
+// @desc    Update a session (status, duration, focusScore, chat history, slides data, etc.)
 // @access  Private
 router.patch('/:id', authMiddleware, async (req, res) => {
   try {
@@ -75,6 +101,12 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       focusMonitorUsed,
       focusLogsCount,
       completedAt,
+      // ── New persistence fields ──
+      notesText,
+      slidesData,
+      chatHistory,
+      lastSlideIndex,
+      difficulty,
     } = req.body;
     
     let session = await Session.findById(req.params.id);
@@ -94,6 +126,13 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     if (focusMonitorUsed !== undefined) session.focusMonitorUsed = !!focusMonitorUsed;
     if (focusLogsCount !== undefined) session.focusLogsCount = Number(focusLogsCount) || 0;
     if (completedAt !== undefined) session.completedAt = completedAt ? new Date(completedAt) : null;
+
+    // ── New persistence fields ──
+    if (notesText !== undefined) session.notesText = notesText;
+    if (slidesData !== undefined) session.slidesData = slidesData;
+    if (chatHistory !== undefined) session.chatHistory = chatHistory;
+    if (lastSlideIndex !== undefined) session.lastSlideIndex = lastSlideIndex;
+    if (difficulty !== undefined) session.difficulty = difficulty;
 
     await session.save();
     res.json(session);

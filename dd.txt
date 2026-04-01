@@ -1,0 +1,77 @@
+1. CONVERT SIDEBAR TO NAVBAR
+Remove the existing <Sidebar> component from the <Layout>. Replace it with a top <Navbar> component that:
+
+Spans full width, fixed at the top (position: fixed; top: 0; z-index: 50)
+Uses backdrop-blur-xl + bg-slate-900/40 + border-b border-white/10 for the glass effect
+Contains the logo on the left, navigation links in the center, and user avatar/auth controls on the right
+On mobile, collapses into a hamburger menu that opens a fullscreen glass drawer
+All routes previously in the sidebar must be preserved in the navbar
+
+Update <Layout> to add padding-top equal to navbar height so content is not obscured.
+
+2. SESSIONROOM — AMBIENT STATE COLOR SHIFTS
+The Sessionroom has 4 states tracked via useRef: teaching, listening, answering, confirming. For each state transition:
+
+Apply a subtle full-panel tint to all .glass-card elements using a CSS class swap
+teaching → faint indigo wash (bg-indigo-900/10)
+listening → faint green wash (bg-green-900/10)
+answering → faint purple wash (bg-purple-900/10)
+confirming → faint amber wash (bg-amber-900/10)
+Transition must be smooth: transition: background 600ms ease
+
+
+3. SESSIONROOM — SLIDE AREA DOMINANCE
+Restructure the CSS Grid layout of Sessionroom so:
+
+The main slide area takes 75-80% of viewport width
+The side panel (Focus Monitor + Chat) becomes a floating overlay panel, not a fixed grid column
+The side panel should slide in/out via a toggle button on the right edge
+When hidden, the slide area expands to full width seamlessly
+
+
+4. WHITEBOARD IMPROVEMENTS
+Inside .whiteboardDrawArea:
+
+Add a subtle 2deg rotation to the container so it feels organic, not sterile
+Animate AI response text appearing character-by-character with a blinking ink-cursor at the end of the current line
+Add a faint paper texture using a CSS background-image noise overlay (opacity: 0.04)
+
+
+5. MICRO-INTERACTIONS
+
+Bookmark clicks: On bookmark, animate the bullet point with scale(1.05) then back to scale(1) over 200ms before settling into the purple border state
+Bullet point audio sync: Instead of an instant class swap, animate a left-side vertical bar that grows from height: 0 to height: 100% downward as the point becomes active
+Interrupt button: Add a CSS ripple/pulse ring animation on click so the student gets immediate visual confirmation before STT activates
+
+
+6. FOCUS MONITOR RING
+Around the webcam feed in FocusMonitor.jsx:
+
+Add an animated ring border that changes color based on focusScore
+focusScore > 75 → green ring (border-green-400)
+focusScore 40–75 → amber ring (border-amber-400)
+focusScore < 40 → red pulsing ring (border-red-500 + animate-pulse)
+The ring transition must be smooth: transition: border-color 800ms ease
+
+
+7. TYPOGRAPHY SCALE
+
+Slide titles should be 2x the size of bullet point text
+Enforce a strict type scale: title = 2rem, subtitle = 1.25rem, bullet = 1rem
+Permanent Marker font size on the whiteboard should be 1.4rem minimum for readability
+
+
+8. AUDIO LOADING SHIMMER
+Before audio Blob URLs are fully preloaded for a slide:
+
+Show a shimmer animation (animate-pulse + bg-slate-700/50) on each bullet point placeholder
+Once audio is ready, fade the shimmers out and fade the real bullet points in using opacity transition over 300ms
+
+
+
+9.also  add the feature that the the entire session is saved in backend in such a way that u could  restart the session without using the api as the generation part would already be done except the focus detection part which would be done in real time and questions and answers would also be saved in the backend in such a way that u could  restart the session without using the api as the generation part would already be done except the focus detection part which would be done in real time and questions and answers would also be saved in the backend
+and  also add the feature that the user can select the difficulty level of the session and the difficulty level should be saved in the backend and the session should be generated according to the difficulty level and the questions and answers should also be generated according to the difficulty level
+
+
+
+  10.also only let the build 5 sessions as the db is limited and when 5 reached he should not let the user  make the session untill deleted .also in session make user pause the sesson end the session but session ending should save the session to db 

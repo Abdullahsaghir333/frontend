@@ -1,0 +1,49 @@
+# Frontend Design Document (Acadomi AI Learning Platform)
+
+## 1. Overview
+The frontend is a Single Page Application (SPA) built using **React 19** and bundled with **Vite**. It serves as the student-facing interface for the "Acadomi" learning platform, offering authentication, document uploading, an interactive AI teaching session (Sessionroom), focus tracking, and post-lecture notes. 
+
+The styling predominantly utilizes modern UI trends like dark mode, glassmorphism, and smooth animations powered by Tailwind CSS.
+
+## 2. Core Technology Stack
+*   **Core Framework:** React 19 (Hooks, Functional Components)
+*   **Build Tool:** Vite (configured in `vite.config.js`)
+*   **Routing:** React Router v7 (`react-router-dom`)
+*   **Styling:** Tailwind CSS (v4) + PostCSS. Helper libraries `clsx` and `tailwind-merge` are used for dynamic CSS class composition.
+*   **Network/API Requests:** `axios`
+*   **Icons:** `lucide-react`
+
+## 3. Specialized Libraries
+*   **`react-webcam`**: Used inside the Sessionroom (specifically by the `FocusMonitor` component) to capture user video feeds for real-time AI focus checking (engagement checking).
+*   **`react-dropzone`**: Used in the `Upload` page to handle drag-and-drop interactions for PDF/Notes uploads.
+
+## 4. Directory Structure & Architecture
+
+The codebase is organized cleanly inside the `/src` directory:
+
+### `/src/context/`
+*   **`AuthContext.jsx`**: Centralized React Context that manages user session state (login, logout, active user profile).
+
+### `/src/components/` (Reusable UI & Logic)
+*   **`Layout.jsx` & `Sidebar.jsx`**: Wrap the main application routes to provide a persistent navigation drawer and structural scaffolding.
+*   **`FocusMonitor.jsx`**: A highly specialized component. It hooks into the webcam feed and handles the frontend logic (and potentially WebSocket communication) for assessing student focus during an active session.
+*   **`Auth/`**: Contains small reusable fragments related to login/signup.
+
+### `/src/pages/` (Route Controllers)
+*   **`Login.jsx` & `Signup.jsx`**: Authentication pages.
+*   **`Dashboard.jsx`**: The main landing hub showing user statistics, past sessions, and options to start new classes.
+*   **`Upload.jsx`**: The interface where students upload their materials (PDF/Text) to be converted into an AI curriculum.
+*   **`Sessionroom.jsx`**: The core interactive loop. This is the "Classroom" where the AI speaks, renders slide content, processes Q&A sockets, and runs the `FocusMonitor`.
+*   **`Notes.jsx`**: A post-session dashboard to view AI-generated comprehensive notes based on bookmarks and lecture content.
+*   **`RoleReversal.jsx`**: An interactive testing mode where the student becomes the teacher to prove their understanding.
+*   **`Sessions.jsx`**: A history log of all past sessions.
+*   **`Settings.jsx`**: User profile and account preferences.
+
+## 5. Main Application Flow
+1. **Authentication**: User logs in (`Login.jsx`), which updates the global `AuthContext`.
+2. **Dashboard > Upload**: User navigates to `Upload.jsx` and drops a PDF. Axios sends this to the Python/Node servers.
+3. **Sessionroom**: Once the curriculum is generated, the user is redirected to `Sessionroom.jsx`. The UI handles streaming WebSockets for the AI voice and simultaneously runs the webcam (`FocusMonitor.jsx`) to check if the user is paying attention.
+4. **Completion**: The user finishes the session and reviews generated study materials in `Notes.jsx` or tests themselves in `RoleReversal.jsx`.
+
+---
+*Note for LLM Context: This React frontend communicates with a dual-backend architecture (Node.js for DB/Auth and Python FastAPI for AI generation, WebSockets, text-to-speech, and MediaPipe-based focus tracking).*

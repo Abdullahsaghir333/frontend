@@ -1,7 +1,6 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import Sidebar from '../components/Sidebar';
 import { Bell, Search, User, Volume2, Shield, Trash2 } from 'lucide-react';
 
 const C = {
@@ -130,16 +129,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
-
-    <Sidebar />
-
-    {/* ── MAIN ── */}
-    <div style={{ marginLeft: 200, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', background: C.bg }}>
 
       {/* Topbar */}
       <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
+        position: 'sticky', top: 56, zIndex: 40,
         height: 60, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)',
         borderBottom: `1px solid ${C.cardBorder}`,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -249,15 +243,13 @@ export default function SettingsPage() {
         </div>
 
       </main>
-    </div>
-
-    <style>{`
+      <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
         * { box-sizing: border-box; }
         input::placeholder { color: #444; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #222; border-radius: 99px; }
       `}</style>
-  </div>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useContext } from 'react';
+import { useState, useCallback, useContext, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
 import { api, AuthContext } from '../context/AuthContext';
@@ -7,7 +7,6 @@ import {
   LogOut, Bell, Search, Play, FileText, Music,
   Image as ImageIcon, Loader2, X
 } from 'lucide-react';
-import Sidebar from '../components/Sidebar';
 
 // ── colour tokens ──────────────────────────────────────────
 const C = {
@@ -52,6 +51,26 @@ export default function Upload() {
   const [error, setError] = useState(null);
   const [statusText, setStatusText] = useState('');
   const [activeNav, setActiveNav] = useState('upload');
+  const [difficulty, setDifficulty] = useState('medium');
+  const [limitCheck, setLimitCheck] = useState({ loading: true, canCreate: true, msg: '' });
+
+  useEffect(() => {
+    let mounted = true;
+    api.get('/sessions/check-limit').then(res => {
+      if (mounted) {
+        setLimitCheck({
+          loading: false,
+          canCreate: res.data.canCreate,
+          msg: res.data.canCreate ? '' : `Session limit reached (${res.data.limit}). Please delete an existing session.`
+        });
+      }
+    }).catch(err => {
+      if (mounted) {
+        setLimitCheck({ loading: false, canCreate: true, msg: '' });
+      }
+    });
+    return () => mounted = false;
+  }, []);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
@@ -72,7 +91,7 @@ export default function Upload() {
       // Field name must match FastAPI route param — check /docs if unsure
       formData.append('file', file);
 
-      const pyRes = await fetch('http://127.0.0.1:8000/api/session', {
+      const pyRes = await fetch(`http://127.0.0.1:8000/api/session?difficulty=${difficulty}`, {
         method: 'POST',
         // Do NOT set Content-Type manually — browser sets it with boundary for multipart
         body: formData,
@@ -108,6 +127,9 @@ export default function Upload() {
           fileName: file.name,
           status: 'in_progress',
           topicsTotal: pyData.slides?.length || 0,
+          difficulty, // save chosen difficulty
+          notesText: pyData.notes_text || '',
+          slidesData: pyData.slides || [], // Persist the generated slides to Node backend!
         });
 
         mongoSessionId = mongoRes.data?._id || mongoRes.data?.id;
@@ -147,19 +169,14 @@ export default function Upload() {
       'audio/*': ['.mp3', '.wav'],
     },
     multiple: false,
-    disabled: loading,
+    disabled: loading || !limitCheck.canCreate,
   });
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
-      <Sidebar />
-
-      {/* ── MAIN ── */}
-      <div style={{ marginLeft: 200, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-
-        {/* Topbar */}
-        <header style={{
-          position: 'sticky', top: 0, zIndex: 50,
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', background: C.bg }}>
+      {/* Topbar */}
+      <header style={{
+        position: 'sticky', top: 56, zIndex: 40,
           height: 60, background: 'rgba(10,10,10,0.9)',
           backdropFilter: 'blur(12px)',
           borderBottom: `1px solid ${C.cardBorder}`,
@@ -234,7 +251,28 @@ export default function Upload() {
               textAlign: 'center',
             }}>
 
-              {loading ? (
+              {limitCheck.loading ? (
+                <Loader2 size={32} color={C.muted} style={{ animation: 'spin 1s linear infinite' }} />
+              ) : !limitCheck.canCreate ? (
+                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                    <div style={{
+                      width: 52, height: 52, borderRadius: '50%',
+                      background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <X size={22} color="#f87171" />
+                    </div>
+                    <div style={{ color: C.white, fontSize: 16, fontWeight: 600, fontFamily: 'sans-serif' }}>Limit Reached</div>
+                    <div style={{
+                      color: '#f87171', fontSize: 13, fontFamily: 'monospace',
+                      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
+                      borderRadius: 8, padding: '10px 16px', maxWidth: 520,
+                      wordBreak: 'break-word', lineHeight: 1.6,
+                    }}>
+                      {limitCheck.msg}
+                    </div>
+                 </div>
+              ) : loading ? (
                 /* ── Loading state ── */
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
                   <Loader2 size={48} color={C.lime} style={{ animation: 'spin 1s linear infinite' }} />
@@ -327,13 +365,35 @@ export default function Upload() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Difficulty Selector */}
+                  <div style={{ marginTop: 20, display: 'flex', gap: 12, alignItems: 'center', background: '#0a0a0a', padding: '6px 8px', borderRadius: 99, border: `1px solid ${C.cardBorder}` }}>
+                    <span style={{ color: C.muted, fontSize: 13, paddingLeft: 8, fontFamily: 'sans-serif', fontWeight: 600 }}>Difficulty:</span>
+                    {['easy', 'medium', 'hard'].map((level) => (
+                      <div
+                        key={level}
+                        onClick={(e) => { e.stopPropagation(); setDifficulty(level); }}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: 99,
+                          cursor: 'pointer',
+                          fontFamily: 'sans-serif',
+                          fontSize: 13,
+                          fontWeight: difficulty === level ? 700 : 500,
+                          color: difficulty === level ? '#000' : C.text,
+                          background: difficulty === level ? C.lime : 'transparent',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </main>
-      </div>
-
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes floatIcon {

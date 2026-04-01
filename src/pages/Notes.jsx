@@ -1,7 +1,6 @@
 import { useState, useContext, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext, api } from '../context/AuthContext';
-import Sidebar from '../components/Sidebar';
 import {
   Bell, Search, ChevronRight, Calendar,
   Copy, Download, FileText, Lightbulb,
@@ -103,10 +102,8 @@ export default function Notes() {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
-      <Sidebar />
-      <div style={{ marginLeft: 200, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <header style={{ position: 'sticky', top: 0, zIndex: 50, height: 60, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', background: C.bg }}>
+      <header style={{ position: 'sticky', top: 56, zIndex: 40, height: 60, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
           <div>
             <div style={{ color: C.white, fontWeight: 700, fontSize: 18, fontFamily: 'Georgia, serif' }}>Notes & Cheatsheets</div>
             <div style={{ color: C.muted, fontSize: 12, marginTop: 1, fontFamily: 'sans-serif' }}>AI-generated study materials from your sessions</div>
@@ -247,7 +244,6 @@ export default function Notes() {
             )}
           </div>
         </div>
-      </div>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         * { box-sizing: border-box; }

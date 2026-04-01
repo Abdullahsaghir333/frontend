@@ -1,7 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext, api } from '../context/AuthContext';
-import Sidebar from '../components/Sidebar';
 import {
     Bell, Search, ArrowUpRight, Play, ChevronRight,
     Clock, FileText, Target, TrendingUp, UploadCloud, Loader2
@@ -157,10 +156,8 @@ export default function Dashboard() {
     }, []);
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
-            <Sidebar />
-            <div style={{ marginLeft: 200, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-                <header style={{ position: 'sticky', top: 0, zIndex: 50, height: 56, background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', background: C.bg }}>
+            <header style={{ position: 'sticky', top: 56, zIndex: 40, height: 56, background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
                     <div>
                         <div style={{ color: C.white, fontWeight: 700, fontSize: 18, fontFamily: 'Georgia, serif' }}>Dashboard</div>
                         <div style={{ color: C.muted, fontSize: 12, marginTop: 1 }}>Welcome back, {user?.name || 'Scholar'}! Ready to learn?</div>
@@ -262,8 +259,6 @@ export default function Dashboard() {
                         </>
                     )}
                 </main>
-            </div>
-
             <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes barGrow { from { transform:scaleX(0); } to { transform:scaleX(1); } }

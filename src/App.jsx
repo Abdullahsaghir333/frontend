@@ -12,6 +12,7 @@ import Upload from './pages/Upload';
 import Notes from './pages/Notes';
 import RoleReversal from './pages/RoleReversal';
 import Settings from './pages/Settings';
+import Layout from './components/Layout';
 
 // Global Styles
 import './App.css';
@@ -51,14 +52,16 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
 
           {/* Protected Application Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
-          <Route path="/session/:id" element={<Navigate to="slide/0" replace />} />
-          <Route path="/session/:id/slide/:slideIndex" element={<ProtectedRoute><SessionRoom /></ProtectedRoute>} />
-          <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-          <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
-          <Route path="/role-reversal" element={<ProtectedRoute><RoleReversal /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
+            <Route path="/session/:id" element={<Navigate to="slide/0" replace />} />
+            <Route path="/session/:id/slide/:slideIndex" element={<ProtectedRoute><SessionRoom /></ProtectedRoute>} />
+            <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+            <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+            <Route path="/role-reversal" element={<ProtectedRoute><RoleReversal /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          </Route>
 
           {/* Root & Fallback Redirection */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
